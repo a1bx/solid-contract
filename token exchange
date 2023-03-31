@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+
+contract GameToken is ERC721 {
+    uint256 public tokenCounter;
+    address payable public owner;
+
+    constructor() ERC721("GameToken", "GEM") {
+        tokenCounter = 0;
+        owner = payable(msg.sender);
+    }
+
+    struct GameItem {
+        string name;
+        string rarity;
+        uint256 price;
+        string imageUrl;
+    }
+
+    mapping(uint256 => GameItem) public gameItems;
+
+    event GameItemCreated(
+        uint256 indexed id,
+        string name,
+        string rarity,
+        uint256 price,
+        string imageUrl
+    );
+
+    event GameItemSold(
+        uint256 indexed id,
+        address indexed seller,
+        address indexed buyer,
+        uint256 price
+    );
+
+    function createGameItem(
+        string memory _name,
+        string memory _rarity,
+        uint256 _price,
+        string memory _imageUrl
+    ) public returns (uint256) {
+        require(msg.sender == owner, "Only the owner can create game items.");
+        tokenCounter++;
+        gameItems[tokenCounter] = GameItem(_name, _rarity, _price, _imageUrl);
+        emit GameItemCreated(tokenCounter, _name, _rarity, _price, _imageUrl);
+        return tokenCounter;
+    }
+
+    function buyGameItem(uint256 _tokenId) public payable {
+        GameItem memory gameItem = gameItems[_tokenId];
+        require(msg.value >= gameItem.price, "Insufficient funds to buy the game item.");
+        address payable seller = payable(ownerOf(_tokenId));
+        _transfer(seller, msg.sender, _tokenId);
+        seller.transfer(msg.value);
+        emit GameItemSold(_tokenId, seller, msg.sender, gameItem.price);
+    }
+}
